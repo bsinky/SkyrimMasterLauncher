@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<data>
+  <enbinjector path="C:\Program Files (x86)\Steam\steamapps\common\Skyrim\ENBInjector.exe"/>
+  <skyrim path="C:\Program Files (x86)\Steam\steamapps\common\Skyrim\skse_loader.exe"/>
+  <steam path="C:\Program Files (x86)\Steam\Steam.exe"/>
+</data>
