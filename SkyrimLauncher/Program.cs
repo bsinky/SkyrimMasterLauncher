@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using System.Xml.Linq;
 
@@ -12,81 +14,89 @@ namespace SkyrimLauncher
             // Time in milliseconds to poll running processes
             const int pollTime = 500;
 
-            // Read in config file
-            XElement eConfig = XElement.Load("launcher-config.xml");
+            // Path to Skyrim folder in relation to SteamPath
+            const string skyrimRelativePath = @"steamapps\common\skyrim\";
 
-            if (eConfig != null)
+            // Read Registry values if possible
+            string steamExePath = (string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Valve\Steam", "SteamExe", null);
+            string steamFolderPath = (string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Valve\Steam", "SteamPath", null);
+            string skyrimExe = null;
+            string enbExe = null;
+
+            // Try to locate Skyrim, SKSE, and ENB
+            if (steamFolderPath != null)
             {
-                XElement eSteam = eConfig.Element("steam");
-                XElement eEnbInjector = eConfig.Element("enbinjector");
-                XElement eSkyrim = eConfig.Element("skyrim");
+                string skyrimFolder = Path.Combine(steamFolderPath, skyrimRelativePath);
 
-                // Check that config has proper elements
-                if(eSteam == null || eEnbInjector == null || eSkyrim == null)
-                {
-                    Console.WriteLine("launcher-config.xml must contain steam, enbinjector, and skyrim elements");
-                    WaitForInputAndClose();
-                }
+                string skseTempPath = Path.Combine(skyrimFolder, "skse_loader.exe");
+                string skyrimTempPath = Path.Combine(skyrimFolder, "TESV.exe");
+                string enbTempPath = Path.Combine(skyrimFolder, "enbinjector.exe");
 
-                // Check that config elements have path attributes
-                if(eSteam.Attribute("path") == null || (eEnbInjector.Attribute("path") == null && eEnbInjector.Attribute("disable") == null) || eSteam.Attribute("path") == null)
-                {
-                    Console.WriteLine("launcher-config.xml steam and skyrim must contain path attributes");
-                    Console.WriteLine("launcher-config.xml enbinjector must contain path and/or disable attributes");
-                    WaitForInputAndClose();
-                }
-
-                string steamPath = eSteam.Attribute("path").Value;
-                string enbInjectorPath = eEnbInjector.Attribute("path") != null ? eEnbInjector.Attribute("path").Value : null;
-                string skyrimPath = eSkyrim.Attribute("path").Value;
-                bool disableEnb = false;
-
-                try
-                {
-                    disableEnb = bool.Parse(eEnbInjector.Attribute("disable").Value);
-                }
-                catch (Exception)
-                {
-                    disableEnb = false;
-                }
-
-                // Launch Steam if it's not running
-                if (!GetIsRunningProcessByName("Steam"))
-                {
-                    Process steam = Process.Start(steamPath);
-
-                    // Poll to see if steamerrorreporter is running every "pollTime" milliseconds
-                    while (!GetIsRunningProcessByName("steamerrorreporter"))
-                    {
-                        Thread.Sleep(pollTime);
-                    }
-
-                    // Steam seems to kill steamerrorreporter once it's fully launched; wait until then
-                    while (GetIsRunningProcessByName("steamerrorreporter"))
-                    {
-                        Thread.Sleep(pollTime);
-                    }
-                }
-
-                if (!disableEnb)
-                {
-                    // Launch ENBInjector if it's not running
-                    if (!GetIsRunningProcessByName("ENBInjector"))
-                    {
-                        Process enbInjector = Process.Start(enbInjectorPath);
-                        while (!GetIsRunningProcessByName(enbInjector.ProcessName))
-                        {
-                            Thread.Sleep(pollTime);
-                        }
-                    }
-
-                    // enbseries.ini must be in the same directory as SkyrimMasterLauncher
-                    // TODO: Create enbseries.ini file dynamically based on paths from config OR copy existing INI over (and update paths within)
-                }
-
-                // Launch Skyrim
-                Process skyrim = Process.Start(skyrimPath);
+                // Use SKSE if it is found, otherwise fall back to vanilla Skyrim EXE
+                skyrimExe = File.Exists(skseTempPath) ? skseTempPath : (File.Exists(skyrimTempPath) ? skyrimTempPath : null);
+                enbExe = File.Exists(enbTempPath) ? enbTempPath : null;
             }
+
+            // Read in config file as a fallback
+            if (File.Exists("launcher-config.xml"))
+            {
+                XElement eConfig = XElement.Load("launcher-config.xml");
+                if (eConfig != null)
+                {
+                    if (steamExePath == null)
+                    {
+                        XElement eSteam = eConfig.Element("steam");
+                        steamExePath = eSteam.Attribute("path").Value;
+                    }
+                    if (enbExe == null)
+                    {
+                        XElement eEnbInjector = eConfig.Element("enbinjector");
+                        string enbInjectorPath = eEnbInjector.Attribute("path") != null ? eEnbInjector.Attribute("path").Value : null;
+                    }
+                    if (skyrimExe == null)
+                    {
+                        XElement eSkyrim = eConfig.Element("skyrim");
+                        string skyrimPath = eSkyrim.Attribute("path").Value;
+                    }
+                }
+            }
+
+            // Launch Steam if it's not running
+            if (!GetIsRunningProcessByName("Steam"))
+            {
+                Process steam = Process.Start(steamExePath);
+
+                // Poll to see if steamerrorreporter is running every "pollTime" milliseconds
+                while (!GetIsRunningProcessByName("steamerrorreporter"))
+                {
+                    Thread.Sleep(pollTime);
+                }
+
+                // Steam seems to kill steamerrorreporter once it's fully launched; wait until then
+                while (GetIsRunningProcessByName("steamerrorreporter"))
+                {
+                    Thread.Sleep(pollTime);
+                }
+            }
+
+            if (enbExe != null)
+            {
+                // Launch ENBInjector if it's not running
+                if (!GetIsRunningProcessByName("ENBInjector"))
+                {
+                    Process enbInjector = Process.Start(enbExe);
+                    while (!GetIsRunningProcessByName(enbInjector.ProcessName))
+                    {
+                        Thread.Sleep(pollTime);
+                    }
+                }
+
+                // enbseries.ini must be in the same directory as SkyrimMasterLauncher
+                // TODO: Possibly create enbseries.ini file dynamically based on paths from config OR copy existing INI over (and update paths within)
+            }
+
+            // Launch Skyrim
+            Process skyrim = Process.Start(skyrimExe);
         }
 
         private static bool GetIsRunningProcessByName(string processName)
