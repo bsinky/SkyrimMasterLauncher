@@ -16,7 +16,7 @@ and launcher-config.xml in the same directory as ENBInjector, and
 the problem should be resolved.  You can read about the cause of
 this [here](https://github.com/bsinky/SkyrimMasterLauncher/wiki/ENBInjector-Issues).
 
-If the program crashes or gives some other errors, the launcher-config.xml was either not found or is missing some vital information.  You need to fill in the correct paths to the following in the launcher-config.xml:
+If the program crashes or gives some other errors, you may need to create the launcher-config.xml file, and fill in the correct paths to the following:
 - TESV.exe or skse_loader.exe, depending on which you use
 - ENBInjector.exe if you use it, or add a disable="true" attribute to the enbinjector element
 - Steam.exe (assuming you launch Skyrim through Steam, non-Steam installs are currently unsupported thorugh SkyrimMasterLauncher)
