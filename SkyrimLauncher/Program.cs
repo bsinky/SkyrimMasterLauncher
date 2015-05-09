@@ -1,5 +1,4 @@
 ﻿using Microsoft.Win32;
-using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -12,7 +11,14 @@ namespace SkyrimLauncher
         static void Main(string[] args)
         {
             // Time in milliseconds to poll running processes
-            const int pollTime = 500;
+            const int PollTime = 500;
+            const int SkyrimRunningPollTime = 5000;
+
+            // Executable process names
+            const string SkyrimProcessName = "TESV";
+            const string SteamProcessName = "Steam";
+            const string SteamErrorReporterProcessName = "steamerrorreporter";
+            const string ENBInjectorProcessName = "ENBInjector";
 
             // Path to Skyrim folder in relation to SteamPath
             const string skyrimRelativePath = @"steamapps\common\skyrim\";
@@ -62,32 +68,32 @@ namespace SkyrimLauncher
             }
 
             // Launch Steam if it's not running
-            if (!GetIsRunningProcessByName("Steam"))
+            if (!GetIsRunningProcessByName(SteamProcessName))
             {
                 Process steam = Process.Start(steamExePath);
 
                 // Poll to see if steamerrorreporter is running every "pollTime" milliseconds
-                while (!GetIsRunningProcessByName("steamerrorreporter"))
+                while (!GetIsRunningProcessByName(SteamErrorReporterProcessName))
                 {
-                    Thread.Sleep(pollTime);
+                    Thread.Sleep(PollTime);
                 }
 
                 // Steam seems to kill steamerrorreporter once it's fully launched; wait until then
-                while (GetIsRunningProcessByName("steamerrorreporter"))
+                while (GetIsRunningProcessByName(SteamErrorReporterProcessName))
                 {
-                    Thread.Sleep(pollTime);
+                    Thread.Sleep(PollTime);
                 }
             }
 
             if (enbExe != null)
             {
                 // Launch ENBInjector if it's not running
-                if (!GetIsRunningProcessByName("ENBInjector"))
+                if (!GetIsRunningProcessByName(ENBInjectorProcessName))
                 {
                     Process enbInjector = Process.Start(enbExe);
                     while (!GetIsRunningProcessByName(enbInjector.ProcessName))
                     {
-                        Thread.Sleep(pollTime);
+                        Thread.Sleep(PollTime);
                     }
                 }
 
@@ -95,20 +101,23 @@ namespace SkyrimLauncher
                 // TODO: Possibly create enbseries.ini file dynamically based on paths from config OR copy existing INI over (and update paths within)
             }
 
-            // Launch Skyrim
+            // Launch Skyrim (SKSE)
             Process skyrim = Process.Start(skyrimExe);
+
+            while(!GetIsRunningProcessByName(SkyrimProcessName))
+            {
+                Thread.Sleep(PollTime);
+            }
+
+            while (GetIsRunningProcessByName(SkyrimProcessName))
+            {
+                Thread.Sleep(SkyrimRunningPollTime);
+            }
         }
 
         private static bool GetIsRunningProcessByName(string processName)
         {
             return Process.GetProcessesByName(processName).Length != 0;
-        }
-
-        private static void WaitForInputAndClose()
-        {
-            Console.WriteLine("Press any key to exit...");
-            Console.ReadKey(true);
-            Environment.Exit(1);
         }
     }
 }
