@@ -85,12 +85,13 @@ namespace SkyrimLauncher
                 }
             }
 
+            Process enbInjector = null;
             if (enbExe != null)
             {
                 // Launch ENBInjector if it's not running
                 if (!GetIsRunningProcessByName(ENBInjectorProcessName))
                 {
-                    Process enbInjector = Process.Start(enbExe);
+                    enbInjector = Process.Start(enbExe);
                     while (!GetIsRunningProcessByName(enbInjector.ProcessName))
                     {
                         Thread.Sleep(PollTime);
@@ -108,10 +109,16 @@ namespace SkyrimLauncher
             {
                 Thread.Sleep(PollTime);
             }
-
+            
             while (GetIsRunningProcessByName(SkyrimProcessName))
             {
                 Thread.Sleep(SkyrimRunningPollTime);
+            }
+
+            // Kill ENB when finished
+            if (enbInjector != null)
+            {
+                enbInjector.Kill();
             }
         }
 
