@@ -19,15 +19,41 @@ namespace SkyrimLauncher
             const string SteamProcessName = "Steam";
             const string SteamErrorReporterProcessName = "steamerrorreporter";
             const string ENBInjectorProcessName = "ENBInjector";
+            const string DefaultConfigFileName = "launcher-config.xml";
 
             // Path to Skyrim folder in relation to SteamPath
             const string skyrimRelativePath = @"steamapps\common\skyrim\";
+
+            // config value is either passed in through command line or is the default
+            string configFile = args.Length > 0 ? args[0].ToString() : DefaultConfigFileName;
 
             // Read Registry values if possible
             string steamExePath = (string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Valve\Steam", "SteamExe", null);
             string steamFolderPath = (string)Registry.GetValue(@"HKEY_CURRENT_USER\Software\Valve\Steam", "SteamPath", null);
             string skyrimExe = null;
+            string[] skyrimArgs = null;
             string enbExe = null;
+
+            // Read in config overrides
+            XElement config = XElement.Load(configFile);
+
+            if (config != null)
+            {
+                XElement skyrimElement = config.Element("skyrim");
+                if (skyrimElement != null)
+                {
+                    XElement customSkyrimCommand = skyrimElement.Element("command");
+                    if (customSkyrimCommand != null)
+                    {
+                        skyrimExe = customSkyrimCommand.Value.Trim();
+                    }
+                    XElement customSkyrimArguments = skyrimElement.Element("arguments");
+                    if(customSkyrimArguments != null)
+                    {
+                        skyrimArgs = customSkyrimArguments.Value.Trim().Split(new[] { '\n' });
+                    }
+                }
+            }
 
             // Try to locate Skyrim, SKSE, and ENB
             if (steamFolderPath != null)
@@ -38,8 +64,13 @@ namespace SkyrimLauncher
                 string skyrimTempPath = Path.Combine(skyrimFolder, "TESV.exe");
                 string enbTempPath = Path.Combine(skyrimFolder, "enbinjector.exe");
 
-                // Use SKSE if it is found, otherwise fall back to vanilla Skyrim EXE
-                skyrimExe = File.Exists(skseTempPath) ? skseTempPath : (File.Exists(skyrimTempPath) ? skyrimTempPath : null);
+                // If no custom command to launch Skyrim (with MO, for example) was given in the config)
+                if (string.IsNullOrEmpty(skyrimExe))
+                {
+                    // Use SKSE if it is found, otherwise fall back to vanilla Skyrim EXE
+                    skyrimExe = File.Exists(skseTempPath) ? skseTempPath : (File.Exists(skyrimTempPath) ? skyrimTempPath : null);
+                }
+
                 enbExe = File.Exists(enbTempPath) ? enbTempPath : null;
             }
 
@@ -103,7 +134,7 @@ namespace SkyrimLauncher
             }
 
             // Launch Skyrim (SKSE)
-            Process skyrim = Process.Start(skyrimExe);
+            Process skyrim = Process.Start(skyrimExe, skyrimArgs == null ? string.Empty : string.Join(" ", skyrimArgs));
 
             while(!GetIsRunningProcessByName(SkyrimProcessName))
             {

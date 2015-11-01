@@ -1,6 +1,14 @@
 .git/
+
 *.suo
-*.v12.sui
+
+*.v12.suo
+
+
 
 SkyrimLauncher/bin/
+
 SkyrimLauncher/obj/
+
+
+SkyrimLauncher/launcher-config.xml
