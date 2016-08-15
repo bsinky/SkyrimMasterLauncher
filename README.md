@@ -1,6 +1,10 @@
 Skyrim Master Launcher
 ======================
 
+### **This project is no longer supported**
+#### *As the community at large recognizes, the wrapper-version of ENB is much preferred, just use that if you are able*
+
+
 Skyrim Master Launcher is a simple program that will simplify the launching of a modded Skyrim by ensuring that common prerequisites, like Steam and ENBInjector, are running before attempting to launch Skyrim.
 
 **It requires .NET 4.5 to run.**
